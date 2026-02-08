@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>واحد برا – النسخة الكروية</title>
+  <style>
+    :root {
+      --green: #1e7f43;
+      --dark-green: #0b2e1c;
+      --white: #ffffff;
+      --gold: #d4af37;
+      --glass: rgba(255,255,255,0.12);
+    }
+
+    * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+
+    body {
+      direction: rtl;
+      text-align: right;
+      margin: 0;
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 40%),
+        linear-gradient(180deg, var(--dark-green), var(--green));
+      color: var(--white);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      border-radius: 22px;
+      padding: 26px;
+      margin-bottom: 26px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+      animation: fadeUp 0.6s ease;
+    }
+
+    h1, h2 { margin-top: 0; }
+
+    button {
+      background: linear-gradient(135deg, var(--gold), #f5d76e);
+      color: #000;
+      border: none;
+      padding: 14px 26px;
+      border-radius: 999px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.4);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 14px;
+      border: none;
+      margin-top: 8px;
+      font-size: 16px;
+    }
+
+    .hidden { display: none; }
+
+    .player {
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.15);
+      margin-bottom: 10px;
+      transition: 0.3s;
+    }
+
+    .active {
+      outline: 2px solid var(--gold);
+      box-shadow: 0 0 20px rgba(212,175,55,0.6);
+    }
+
+    .profile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .profile img {
+      width: 150px;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 50%;
+      box-shadow: 0 0 35px rgba(30,127,67,0.9);
+      border: 4px solid var(--gold);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.35);
+      margin-right: 8px;
+      margin-top: 6px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HOME -->
+  <div id="home" class="card">
+    <h1>⚽ واحد برا – النسخة الكروية</h1>
+    <p>لعبة استنتاج اجتماعي كروية بتصميم احترافي وأصوات جمهور تحاكي أجواء الملاعب.</p>
+
+    <div class="profile">
+      <p><strong>ارفع صورتك الشخصية</strong></p>
+      <input type="file" id="photoInput" accept="image/*" />
+      <img id="profilePreview" class="hidden" />
+      <input type="text" id="nickname" placeholder="اسمك أو لقبك (اختياري)" />
+    </div>
+
+    <br />
+    <button onclick="goToSetup()">ابدأ اللعبة</button>
+  </div>
+
+  <!-- SETUP -->
+  <div id="setup" class="card hidden">
+    <h2>👥 إعداد اللاعبين</h2>
+
+    <label>أسماء اللاعبين (4 – 10)</label>
+    <textarea id="playersInput" rows="5" placeholder="Ali\nSami\nYoussef\nKarim"></textarea>
+
+    <br /><br />
+
+    <label>⚽ اختر فئة الكلمة</label>
+    <select id="category">
+      <option value="players">لاعبون</option>
+      <option value="clubs">أندية</option>
+      <option value="managers">مدربون</option>
+      <option value="tournaments">بطولات</option>
+      <option value="news">أخبار كروية حديثة</option>
+    </select>
+
+    <br /><br />
+    <button onclick="startGame()">دخول غرفة اللعب</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game" class="card hidden">
+    <h2>🎮 غرفة اللعب</h2>
+    <p class="badge">مرّر الهاتف لكل لاعب</p>
+    <div id="playerList"></div>
+    <br />
+    <button onclick="nextTurn()">التالي</button>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result" class="card hidden">
+    <h2>🏁 نهاية الجولة</h2>
+    <p id="resultText"></p>
+    <button onclick="location.reload()">لعبة جديدة</button>
+  </div>
+
+</div>
+
+<audio id="whistle" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
+<audio id="crowd" src="https://assets.mixkit.co/active_storage/sfx/216/216-preview.mp3"></audio>
+
+<script>
+  let players = [];
+  let impostorIndex = -1;
+  let keyword = '';
+  let turn = 0;
+
+  const keywordBank = {
+    players: ['Erling Haaland', 'Kylian Mbappé', 'Jude Bellingham', 'Mohamed Salah'],
+    clubs: ['Real Madrid', 'Manchester City', 'AC Milan', 'Bayern Munich'],
+    managers: ['Pep Guardiola', 'Carlo Ancelotti', 'Xabi Alonso'],
+    tournaments: ['Champions League', 'Euro 2024', 'Copa America'],
+    news: ['Mbappé to Real Madrid', 'VAR controversy', 'Super League talks']
+  };
+
+  const photoInput = document.getElementById('photoInput');
+  const profilePreview = document.getElementById('profilePreview');
+
+  photoInput.addEventListener('change', () => {
+    const file = photoInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      profilePreview.src = e.target.result;
+      profilePreview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function goToSetup() {
+    document.getElementById('home').classList.add('hidden');
+    document.getElementById('setup').classList.remove('hidden');
+  }
+
+  function startGame() {
+    document.getElementById('whistle').play();() {
+    players = document.getElementById('playersInput').value
+      .split('\n')
+      .map(p => p.trim())
+      .filter(Boolean);
+
+    if (players.length < 4 || players.length > 10) {
+      alert('عدد اللاعبين يجب أن يكون بين 4 و 10');
+      return;
+    }
+
+    const category = document.getElementById('category').value;
+    const list = keywordBank[category];
+
+    impostorIndex = Math.floor(Math.random() * players.length);
+    keyword = list[Math.floor(Math.random() * list.length)];
+
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('game').classList.remove('hidden');
+
+    renderPlayers();
+    alert('لا تسمح للدخيل برؤية الكلمة ⚠️');
+  }
+
+  function renderPlayers() {
+    const list = document.getElementById('playerList');
+    list.innerHTML = '';
+
+    players.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = 'player' + (i === turn ? ' active' : '');
+      div.innerHTML = `<strong>${p}</strong><br>` +
+        (i === impostorIndex
+          ? '❓ أنت الدخيل'
+          : `⚽ الكلمة: <em>${keyword}</em>`);
+      list.appendChild(div);
+    });
+  }
+
+  function nextTurn() {
+    document.getElementById('crowd').play();() {
+    turn++;
+    if (turn >= players.length) {
+      document.getElementById('game').classList.add('hidden');
+      document.getElementById('result').classList.remove('hidden');
+      document.getElementById('resultText').innerText =
+        'انتهت مرحلة التلميحات. الآن ناقشوا وصوّتوا!';
+      return;
+    }
+    renderPlayers();
+  }
+</script>
+
+</body>
+</html>
